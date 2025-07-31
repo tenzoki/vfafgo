@@ -1,122 +1,91 @@
+# vfafgo – File, Version, Encryption, HTTP, and Zip Utilities
 
-# govifilemod: Lightweight File & Version Control Utilities for Go
-
-## Description
-
-The `govifilemod` module provides two main components:
-
-- **Vcr**: Simple version control operations using `go-git`, allowing you to version your workspace or individual project directories without external git commands.
-- **Vfs**: Virtual file system utilities for easy file read/write/exists operations relative to a root directory.
-
-Both types are lightweight and designed for integration into Go projects needing basic file and version management.
+This package provides primitives for file storage configuration, ignore pattern matching, virtual filesystem (VFS), lightweight git-style versioning, encrypted streaming, HTTP PUT helpers, and directory compression/extraction with zip. Below, every function/struct in the codebase is explained, with usage for the included Go tests.
 
 ---
 
-## Public Types and Functions
+## Function and Struct Explanations
 
-### Vfs (Virtual File System)
+### config.go
 
-#### Type
-```go
-type Vfs struct {
-    root string
-}
-```
+**Config struct** – Configuration for storage location, local directory, and remote URL.
 
-#### Public Functions
-
-- **NewFS(root string) *Vfs**
-  Initializes a new Vfs rooted at the given directory path.
-
-- **(fs *Vfs) Path(parts ...string) string**
-  Returns the absolute path for the given path segments relative to the root.
-
-- **(fs *Vfs) Read(parts ...string) (string, error)**
-  Reads a file (relative to root) and returns its contents as a string.
-
-- **(fs *Vfs) Write(content string, parts ...string) error**
-  Writes the given content to a file (relative to root), creating directories as needed.
-
-- **(fs *Vfs) Exists(parts ...string) bool**
-  Returns true if the file or directory (relative to root) exists.
-
-### Vcr (Version Control Recorder)
-
-#### Type
-```go
-type Vcr struct {
-    workdir string
-    repo    *git.Repository
-}
-```
-
-#### Public Functions
-
-- **NewVcr(user, workdir string) *Vcr**
-  Initializes or opens a git repository in the specified working directory. The repository is initialized only if `user != "default"`.
-- **(v *Vcr) Commit(message string) string**
-  Create a commit with a message and return the commit id.
-- **(v *Vcr) BranchFrom(baseTag, comment string) string**
-  Create a new branch from a tag or HEAD, with a comment.
-- **(v *Vcr) GetHistory() []string**
-  List all commits by time (as strings).
-- **(v *Vcr) Checkout(refName string) error**
-  Switch to a given branch or tag.
-- **(v *Vcr) RewriteToMain(sourceRef, message string) error**
-  Replace main branch with content from another ref and commit with a message.
-- **(v *Vcr) Purge() error**
-  Remove the `.git` directory to reset versioning.
+- `LoadStorageConfig()` – Reads the root directory for storage from the environment or uses a default.
+- `New(localDir, remoteURL string)` – Creates a `Config` struct, ensuring the directory exists and is absolute.
 
 ---
 
-## Usage in Another Go Project
+### ignore.go
 
-### 1. Install Dependencies
+**IgnoreMatcher struct** – Holds ignore/globbing patterns from a `.qignore` file.
 
-Make sure to include this module and its dependencies—`github.com/go-git/go-git/v5` is required.
+- `LoadIgnoreMatcher(baseDir string)` – Loads ignore patterns found in `.qignore` within a directory.
+- `(IgnoreMatcher) Ignore(relPath string)` – Checks whether a given path matches any of the ignore patterns.
 
-### 2. Using the Module
+---
 
-#### Importing
+### vfs.go
 
-If your module name is, for example, `github.com/tenzoki/govifilemod`, import it as:
+**Vfs struct** – Virtual filesystem abstraction with root directory.
 
-```go
-import "github.com/tenzoki/govifilemod"
-```
-Change the path accordingly.
+- `NewFS(root string)` – Initializes a new virtual filesystem at the given root.
+- `(*Vfs) Path(parts ...string)` – Returns full path for sub-paths combined under root.
+- `(*Vfs) Read(parts ...string)` – Returns file contents for a relative path.
+- `(*Vfs) Write(content string, parts ...string)` – Writes content to a relative file, creating directories as necessary.
+- `(*Vfs) Exists(parts ...string)` – Returns true if the file or directory exists under the root.
 
-#### Example
+---
 
-```go
-package main
+### vcr.go
 
-import (
-    "fmt"
-    "github.com/tenzoki/govifilemod"
-)
+**Vcr struct** – Wrapper around a git repository for simple versioning.
 
-func main() {
-    // VFS Usage
-    fs := gov.NewFS("./workspace")
-    _ = fs.Write("hello world", "test.txt")
-    data, err := fs.Read("test.txt")
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("test.txt contains:", data)
+- `NewVcr(user, workdir string)` – Opens/initializes a git repo in the specified workdir. Initialization only occurs if user != "default".
+- `(*Vcr) Commit(message string)` – Commits *all* staged changes and returns the commit hash.
+- `(*Vcr) BranchFrom(baseTag, comment string)` – Creates and checks out a new branch from tag or HEAD, returns new commit id.
+- `(*Vcr) GetHistory()` – Lists all commits in the repository.
+- `(*Vcr) Checkout(refName string)` – Switches repository to a branch or tag.
+- `(*Vcr) RewriteToMain(sourceRef, message string)` – Overwrites main branch with the content from another branch or commit.
+- `(*Vcr) Purge()` – Deletes the internal .git directory, erasing all repo history.
 
-    // VCR Usage
-    vcr := gov.NewVcr("john", "./workspace")
-    vcr.Commit("Initial save")
-    // List commit history
-    fmt.Println("History:", vcr.GetHistory())
-}
-```
-## Tests
+---
 
-Run tests:
+### http.go
+
+- `encrypt(buf bytes.Buffer, key []byte)` – Encrypts data using the external `cryptogo` library and a provided key.
+- `PutStreamEncrypted(remoteURL, rel, buf, key)` – Encrypts and uploads a buffer to a remote HTTP server.
+- `PutStream(remoteURL, rel, buf)` – Uploads (PUTs) the buffer directly to an HTTP server.
+
+---
+
+### zip.go
+
+- `Unzip(src, dest)` – Extracts all files from a zip archive into a destination folder.
+- `Zip(localRoot, relInputPath, dest)` – Creates a zip archive of a folder, ignoring files listed in `.qignore` if present; result is stored to buffer and can be saved to disk.
+
+---
+
+## How to Use the Tests in `vfafgo_test.go`
+
+The file `vfafgo_test.go` includes tests for all main features:
+
+- **Virtual File System (TestVfsBasic):** Checks file creation, reading, directory handling.
+- **VCR/Version Control (TestVcrBasic):** Checks git-like versioning, commits, purging version history (.git removal).
+- **Config (TestConfig):** Checks config and parameter parsing.
+- **Ignore Patterns (TestIgnore):** Checks pattern loading and file ignoring.
+- **HTTP Helpers (TestHTTPHelpers):** Checks error handling and encrypt function (actual network calls are error-expected; focus is on logic).
+- **Zip/Unzip (TestZipUnzip):** Verifies directory zipping, file ignore support, and zip extraction.
+
+### Running the Tests
+
+From the package directory, run:
 
 ```sh
 go test -v
 ```
+
+You’ll see verbose output; errors/failures will be reported if any function does not behave as expected. All tests are self-contained. No network or external setup is required unless you add new HTTP endpoints.
+
+---
+
+This document provides a function-level overview along with quick test instructions to help new users and maintainers understand and validate the codebase.

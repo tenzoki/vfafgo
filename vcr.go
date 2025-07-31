@@ -1,4 +1,4 @@
-package gov
+package vfafgo
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func (v *Vcr) initGit(user string) {
 		w, _ := v.repo.Worktree()
 		v.repo.CreateBranch(&config.Branch{Name: MAIN})
 		w.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName(MAIN), Create: true})
-        v.Commit("Initialized")
+		v.Commit("Initialized")
 	}
 }
 
@@ -105,7 +105,7 @@ func (v *Vcr) BranchFrom(baseTag, comment string) string {
 		return ""
 	}
 
-    tag := v.Commit(fmt.Sprintf("Branched from %s: %s", baseTag, comment))
+	tag := v.Commit(fmt.Sprintf("Branched from %s: %s", baseTag, comment))
 	return tag
 }
 

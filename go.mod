@@ -1,8 +1,11 @@
-module gov-module-check
+module github.com/tenzoki/vfafgo
 
 go 1.24.3
 
-require github.com/go-git/go-git/v5 v5.16.2
+require (
+	github.com/go-git/go-git/v5 v5.16.2
+	github.com/tenzoki/cryptogo v1.0.4
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
