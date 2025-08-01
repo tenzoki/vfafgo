@@ -88,4 +88,6 @@ You’ll see verbose output; errors/failures will be reported if any function do
 
 ---
 
-This document provides a function-level overview along with quick test instructions to help new users and maintainers understand and validate the codebase.
+## License
+
+This project is licensed under the [European Union Public Licence v1.2 (EUPL)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
